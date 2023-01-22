@@ -69,7 +69,7 @@ class OrderItemSerializer(serializers.ModelSerializer):
 
 
 class OrderSerializer(serializers.ModelSerializer):
-    products = OrderItemSerializer(many=True, allow_empty=False)
+    products = OrderItemSerializer(many=True, allow_empty=False, write_only=True)
 
     class Meta:
         model = Order
@@ -97,4 +97,4 @@ def register_order(request):
         OrderItem(order=new_order, **fields) for fields in products_fields
     ]
     OrderItem.objects.bulk_create(order_items)
-    return Response({})
+    return Response(OrderSerializer(new_order).data)
