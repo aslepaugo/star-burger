@@ -65,6 +65,12 @@ def register_order(request):
     order_data = request.data
     if not order_data:
         return Response()
+    if 'products' not in order_data:
+        return Response(['products: required field'], status=400)
+    if not isinstance(order_data['products'], list):
+        return Response(['products: expected list of values'], status=400)
+    if not order_data['products']:
+        return Response(['products: list can''t be empty'], status=400)           
     new_order = Order.objects.create(
         first_name = order_data['firstname'],
         last_name = order_data['lastname'],
