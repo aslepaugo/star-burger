@@ -139,7 +139,7 @@ class Order(models.Model):
 class OrderItem(models.Model):
     order = models.ForeignKey(Order, related_name='orders', verbose_name='заказ', on_delete=models.CASCADE)
     product = models.ForeignKey(Product, related_name='items', verbose_name='продукт', on_delete=models.CASCADE)
-    quamtity = models.PositiveSmallIntegerField(verbose_name='колличество')
+    quantity = models.PositiveSmallIntegerField(verbose_name='колличество')
 
     class Meta:
         verbose_name = 'продукт в заказе'
