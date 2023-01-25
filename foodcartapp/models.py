@@ -1,6 +1,16 @@
 from django.db import models
 from django.core.validators import MinValueValidator
+from enum import Enum, auto
 from phonenumber_field.modelfields import PhoneNumberField
+
+
+class OrderStatus(Enum):
+    NEW = auto()
+    PREPARE = auto()
+    DELIVERY = auto()
+    DONE = auto()
+    CANCELED = auto()
+
 
 class Restaurant(models.Model):
     name = models.CharField(
@@ -127,12 +137,28 @@ class OrderQuerySet(models.query.QuerySet):
     def total_price(self):
         return self.annotate(total = models.Sum(models.F('orders__quantity') * models.F('orders__price')))
 
+    def not_done(self):
+        return self.exclude(status__in=[OrderStatus.DONE.value, OrderStatus.CANCELED.value])
+
 
 class Order(models.Model):
+    ORDER_STATUS_CHOICES = [
+        (OrderStatus.NEW.value, 'Новый'),
+        (OrderStatus.PREPARE.value, 'Готовится'),
+        (OrderStatus.DELIVERY.value, 'Доставляется'),
+        (OrderStatus.DONE.value, 'Выполнен'),
+        (OrderStatus.CANCELED.value, 'Отменен'),
+    ]
     firstname = models.CharField(max_length=255, verbose_name='Имя')
     lastname = models.CharField(max_length=255, verbose_name='Фамилия', db_index=True)
     phonenumber = PhoneNumberField(verbose_name='Телефон', db_index=True)
     address = models.CharField(max_length=255, verbose_name='Адрес')
+    status = models.PositiveSmallIntegerField(
+        verbose_name='Статус',
+        choices=ORDER_STATUS_CHOICES,
+        default=OrderStatus.NEW.value,
+        db_index=True,
+    )
 
     objects = OrderQuerySet.as_manager()
 
