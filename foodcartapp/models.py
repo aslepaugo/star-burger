@@ -13,6 +13,11 @@ class OrderStatus(Enum):
     CANCELED = auto()
 
 
+class OrderPaymentMethod(Enum):
+    CASH = auto()
+    CARD = auto()
+
+
 class Restaurant(models.Model):
     name = models.CharField(
         'название',
@@ -150,6 +155,11 @@ class Order(models.Model):
         (OrderStatus.DONE.value, 'Выполнен'),
         (OrderStatus.CANCELED.value, 'Отменен'),
     ]
+    ORDER_PAYMENT_METHOD_CHOICE = [
+        (OrderPaymentMethod.CASH.value, 'Наличные'),
+        (OrderPaymentMethod.CARD.value, 'Картой'),
+    ]
+
     firstname = models.CharField(max_length=255, verbose_name='Имя')
     lastname = models.CharField(max_length=255, verbose_name='Фамилия', db_index=True)
     phonenumber = PhoneNumberField(verbose_name='Телефон', db_index=True)
@@ -158,6 +168,12 @@ class Order(models.Model):
         verbose_name='Статус',
         choices=ORDER_STATUS_CHOICES,
         default=OrderStatus.NEW.value,
+        db_index=True,
+    )
+    payment_method = models.PositiveSmallIntegerField(
+        verbose_name='Способ оплаты',
+        choices=ORDER_PAYMENT_METHOD_CHOICE,
+        default=OrderPaymentMethod.CASH.value,
         db_index=True,
     )
     comment = models.TextField(verbose_name='Комментарий', blank=True)
