@@ -118,6 +118,8 @@ class OrderAdmin(admin.ModelAdmin):
         OrderItemInline,
     ]
 
+    readonly_fields = ['registered_at',]
+
     def response_change(self, request, obj):
         response = super().response_post_save_change(request, obj)
         if (
