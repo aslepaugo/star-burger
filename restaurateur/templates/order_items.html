@@ -47,8 +47,8 @@
             <details>
               <summary style="cursor: pointer;">▶</summary>
               <ul>
-                {% for restaurant in restaurants %}
-                  <li><i><b>{{ restaurant }}</b></i></li>
+                {% for restaurant, distance in restaurants %}
+                  <li><i><b>{{ restaurant }} {{distance}}</b></i></li>
                 {% endfor %}
               </ul>
             </details>

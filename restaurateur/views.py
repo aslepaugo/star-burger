@@ -5,6 +5,10 @@ from django.urls import reverse_lazy
 from django.contrib.auth.decorators import user_passes_test
 from django.contrib.auth import authenticate, login
 from django.contrib.auth import views as auth_views
+from django.conf import settings
+from geopy import distance
+from geopy.exc import GeopyError
+from geopy.geocoders import Yandex
 
 from foodcartapp.models import Order, Product, Restaurant
 
@@ -90,15 +94,35 @@ def view_restaurants(request):
 
 @user_passes_test(is_manager, login_url='restaurateur:login')
 def view_orders(request):
+    geocoder = Yandex(api_key=settings.YANDEX_API_KEY)
     restaurants = []
     orders = Order.objects.total_price().not_done().order_by('status', '-registered_at')
     for order in orders:
         suitable_restaurants = []
         if not order.restaurant:
             suitable_restaurants = Restaurant.objects.suitable_for_order(order)
-        restaurants.append(suitable_restaurants)
-    orders_with_restaurants = list(zip(orders, restaurants))
+            try:
+                _, order_coords = geocoder.geocode(order.address)
+                distances = []
+                for restaurant in suitable_restaurants:
+                    try:
+                        restaurant_distance = distance.distance(
+                                order_coords,
+                                geocoder.geocode(restaurant.address)[1]
+                        ).km
+                        distances.append(f'{restaurant_distance:.2f} км.')
+                    except (GeopyError, TypeError):
+                        distances.append('нет данных')
+            except (GeopyError, TypeError):
+                distances = ['нет данных'] * len(suitable_restaurants)
 
+        restaurants.append(
+            sorted(
+                tuple(zip(suitable_restaurants, distances)),
+                key=lambda restaurant: restaurant[1],
+            )
+        )
+    orders_with_restaurants = list(zip(orders, restaurants))    
     return render(request, template_name='order_items.html', context={
         'order_items': orders_with_restaurants,
     })
