@@ -21,11 +21,16 @@
       <th>Телефон</th>
       <th>Адрес доставки</th>
       <th>Комментарий</th>
+      <th>Рестораны</th>
       <th>Ссылка на админку</th>
     </tr>
 
-    {% for item in order_items %}
+    {% for item, restaurants in order_items %}
+      {% if restaurants|length == 0 and not item.restaurant %}
+      <tr style="color:red;background-color: rgb(218, 214, 214);">
+      {% else %}
       <tr>
+      {% endif %}        
         <td>{{ item.id }}</td>
         <td>{{ item.get_status_display }}</td>
         <td>{{ item.get_payment_method_display }}</td>
@@ -34,6 +39,23 @@
         <td>{{ item.phonenumber }}</td>
         <td>{{ item.address }}</td>
         <td>{{ item.comment }}</td>
+        <td>
+          {% if item.restaurant %}
+            Готовит <b>{{ item.restaurant }}</b>
+          {% elif restaurants|length > 0 %}
+            Может быть приготовлен ресторанами
+            <details>
+              <summary style="cursor: pointer;">▶</summary>
+              <ul>
+                {% for restaurant in restaurants %}
+                  <li><i><b>{{ restaurant }}</b></i></li>
+                {% endfor %}
+              </ul>
+            </details>
+          {% else %}
+            <b>Ресторан для обработки заказа не найден</b>
+          {% endif %}
+        </td>
         <td><a href="{% url 'admin:foodcartapp_order_change' object_id=item.id %}?next={{ request.get_full_path|urlencode }}">Редактировать</a></td>
       </tr>
     {% endfor %}

@@ -1,5 +1,5 @@
-from django.db import models
 from django.core.validators import MinValueValidator
+from django.db import models
 from django.utils import timezone
 from enum import Enum, auto
 from phonenumber_field.modelfields import PhoneNumberField
@@ -18,6 +18,18 @@ class OrderPaymentMethod(Enum):
     CARD = auto()
 
 
+class RestaurantQuerySet(models.QuerySet):
+    def suitable_for_order(self, order):
+        order_products = OrderItem.objects.filter(order=order)
+        return self.annotate(
+            prod_count=models.Count(
+                'menu_items__product',
+                filter=models.Q(menu_items__product__in=order_products.values(
+                    'product')) & models.Q(menu_items__availability=True)
+            )
+        ).filter(prod_count=order_products.count())
+
+
 class Restaurant(models.Model):
     name = models.CharField(
         'название',
@@ -34,6 +46,7 @@ class Restaurant(models.Model):
         blank=True,
     )
 
+    objects = RestaurantQuerySet.as_manager()
     class Meta:
         verbose_name = 'ресторан'
         verbose_name_plural = 'рестораны'
@@ -193,6 +206,14 @@ class Order(models.Model):
         blank=True,
         null=True,
         db_index=True,
+    )
+    restaurant = models.ForeignKey(
+        Restaurant,
+        related_name='orders',
+        verbose_name='Ресторан',
+        on_delete=models.CASCADE,
+        blank=True,
+        null=True,
     )
 
     objects = OrderQuerySet.as_manager()

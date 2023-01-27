@@ -132,3 +132,7 @@ class OrderAdmin(admin.ModelAdmin):
         ):
             return HttpResponseRedirect(request.GET['next'])
         return response
+
+    def render_change_form(self, request, context, *args, **kwargs):
+        context['adminform'].form.fields['restaurant'].queryset = Restaurant.objects.suitable_for_order(kwargs['obj'])
+        return super(OrderAdmin, self).render_change_form(request, context, *args, **kwargs)
