@@ -1,16 +1,15 @@
 from django import forms
-from django.shortcuts import redirect, render
-from django.views import View
-from django.urls import reverse_lazy
-from django.contrib.auth.decorators import user_passes_test
 from django.contrib.auth import authenticate, login
 from django.contrib.auth import views as auth_views
-from django.conf import settings
+from django.contrib.auth.decorators import user_passes_test
+from django.shortcuts import redirect, render
+from django.urls import reverse_lazy
+from django.views import View
 from geopy import distance
 from geopy.exc import GeopyError
-from geopy.geocoders import Yandex
 
 from foodcartapp.models import Order, Product, Restaurant
+from geolocation.models import Location
 
 
 class Login(forms.Form):
@@ -94,35 +93,45 @@ def view_restaurants(request):
 
 @user_passes_test(is_manager, login_url='restaurateur:login')
 def view_orders(request):
-    geocoder = Yandex(api_key=settings.YANDEX_API_KEY)
-    restaurants = []
     orders = Order.objects.total_price().not_done().order_by('status', '-registered_at')
+    restaurants = []
     for order in orders:
-        suitable_restaurants = []
-        if not order.restaurant:
-            suitable_restaurants = Restaurant.objects.suitable_for_order(order)
+        if order.restaurant:
+            restaurants.append([])
+            continue
+
+        suitable_restaurants = Restaurant.objects.suitable_for_order(order)
+        distances = [-1] * len(suitable_restaurants)
+
+        client_location, _ = Location.objects.get_or_create(raw_address=order.address)
+        try:
+            if not client_location.processed:
+                client_location.process_coordinates()
+        except (GeopyError, TypeError):
+            restaurants.append(list(zip(suitable_restaurants, distances)),)
+            continue
+        client_coordinates = (client_location.latitude, client_location.longitude)
+
+        for index, restaurant in enumerate(suitable_restaurants):
+            restaurant_location, _ = Location.objects.get_or_create(raw_address=restaurant.address)
             try:
-                _, order_coords = geocoder.geocode(order.address)
-                distances = []
-                for restaurant in suitable_restaurants:
-                    try:
-                        restaurant_distance = distance.distance(
-                                order_coords,
-                                geocoder.geocode(restaurant.address)[1]
-                        ).km
-                        distances.append(f'{restaurant_distance:.2f} км.')
-                    except (GeopyError, TypeError):
-                        distances.append('нет данных')
+                if not restaurant_location.processed:
+                    restaurant_location.process_coordinates()
             except (GeopyError, TypeError):
-                distances = ['нет данных'] * len(suitable_restaurants)
+                continue
+
+            restaurant_coordinates = (restaurant_location.latitude, restaurant_location.longitude)
+            delivery_distance = distance.distance(client_coordinates, restaurant_coordinates).km
+            distances[index] = delivery_distance
 
         restaurants.append(
             sorted(
                 tuple(zip(suitable_restaurants, distances)),
-                key=lambda restaurant: restaurant[1],
+                key=lambda item: float(item[1])
             )
         )
-    orders_with_restaurants = list(zip(orders, restaurants))    
+    orders_with_restaurants = list(zip(orders, restaurants))
+
     return render(request, template_name='order_items.html', context={
         'order_items': orders_with_restaurants,
     })
