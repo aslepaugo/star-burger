@@ -1,7 +1,8 @@
+from enum import Enum, auto
+
 from django.core.validators import MinValueValidator
 from django.db import models
 from django.utils import timezone
-from enum import Enum, auto
 from phonenumber_field.modelfields import PhoneNumberField
 
 
@@ -47,6 +48,7 @@ class Restaurant(models.Model):
     )
 
     objects = RestaurantQuerySet.as_manager()
+
     class Meta:
         verbose_name = 'ресторан'
         verbose_name_plural = 'рестораны'
@@ -154,7 +156,7 @@ class RestaurantMenuItem(models.Model):
 
 class OrderQuerySet(models.query.QuerySet):
     def total_price(self):
-        return self.annotate(total = models.Sum(models.F('order_items__quantity') * models.F('order_items__price')))
+        return self.annotate(total=models.Sum(models.F('order_items__quantity') * models.F('order_items__price')))
 
     def not_done(self):
         return self.exclude(status__in=[OrderStatus.DONE.value, OrderStatus.CANCELED.value])
@@ -229,7 +231,7 @@ class Order(models.Model):
 class OrderItem(models.Model):
     order = models.ForeignKey(Order, related_name='order_items', verbose_name='заказ', on_delete=models.CASCADE)
     product = models.ForeignKey(Product, related_name='order_items', verbose_name='продукт', on_delete=models.CASCADE)
-    quantity = models.PositiveSmallIntegerField(verbose_name='количество')
+    quantity = models.PositiveSmallIntegerField(verbose_name='количество', validators=[MinValueValidator(1)],)
     price = models.DecimalField(verbose_name='цена', max_digits=8, decimal_places=2, validators=[MinValueValidator(0)])
 
     class Meta:
