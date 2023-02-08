@@ -96,10 +96,6 @@ def view_orders(request):
     orders = Order.objects.total_price().not_done().order_by('status', '-registered_at')
     restaurants = []
     for order in orders:
-        if order.cooking_restaurant:
-            restaurants.append([])
-            continue
-
         suitable_restaurants = Restaurant.objects.suitable_for_order(order)
         distances = [-1] * len(suitable_restaurants)
 
