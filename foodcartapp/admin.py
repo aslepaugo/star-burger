@@ -135,4 +135,4 @@ class OrderAdmin(admin.ModelAdmin):
 
     def render_change_form(self, request, context, *args, **kwargs):
         context['adminform'].form.fields['cooking_restaurant'].queryset = Restaurant.objects.suitable_for_order(kwargs['obj'])
-        return super(OrderAdmin, self).render_change_form(request, context, *args, **kwargs)
+        return super().render_change_form(request, context, *args, **kwargs)
