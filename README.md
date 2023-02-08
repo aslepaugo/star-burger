@@ -54,9 +54,17 @@ python -m venv venv
 pip install -r requirements.txt
 ```
 
-Определите переменную окружения `SECRET_KEY`. Создать файл `.env` в каталоге `star_burger/` и положите туда такой код:
+Определите переменную окружения `SECRET_KEY` и `YANDEX_API_KEY`.
+
+`SECRET_KEY` - вы можете сгенерировать самостоятельно или с помощью сервиса [randomkeygen](https://randomkeygen.com).
+
+`YANDEX_API_KEY` - нужно получить в [кабинете разработчика](https://developer.tech.yandex.ru/). 
+
+Создать файл `.env` в каталоге `star_burger/` и положите туда такой код:
+
 ```sh
 SECRET_KEY=django-insecure-0if40nf4nf93n4
+YANDEX_API_KEY=YOUR_YANDEX_GEO_API_KEY
 ```
 
 Создайте файл базы данных SQLite и отмигрируйте её следующей командой:
