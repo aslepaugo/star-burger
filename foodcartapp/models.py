@@ -209,11 +209,11 @@ class Order(models.Model):
         null=True,
         db_index=True,
     )
-    restaurant = models.ForeignKey(
+    cooking_restaurant = models.ForeignKey(
         Restaurant,
         related_name='orders',
-        verbose_name='Ресторан',
-        on_delete=models.CASCADE,
+        verbose_name='Готовится в ресторане',
+        on_delete=models.SET_NULL,
         blank=True,
         null=True,
     )
