@@ -11,12 +11,7 @@ class Location(models.Model):
         db_index=True,
         unique=True,
     )
-    normalized_address = models.CharField(
-        verbose_name='Нормализованый адрес',
-        max_length=255,
-        db_index=True,
-        null=True,
-    )
+
     latitude = models.DecimalField(
         verbose_name='Широта',
         max_digits=8,
@@ -36,10 +31,6 @@ class Location(models.Model):
         editable=False,
         default=timezone.now
     )
-    processed = models.BooleanField(
-        verbose_name='Обработан',
-        default=False,
-    )
 
     class Meta:
         verbose_name = 'Локация'
@@ -47,10 +38,8 @@ class Location(models.Model):
 
     def process_coordinates(self):
         geocoder = Yandex(api_key=settings.YANDEX_API_KEY)
-        normalized_address, coordinates = geocoder.geocode(self.raw_address)
-        self.normalized_address = normalized_address
+        _, coordinates = geocoder.geocode(self.raw_address)
         self.latitude, self.longitude = coordinates
-        self.processed = True
         self.updated_at = timezone.now()
         self.save()
 
