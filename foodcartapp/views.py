@@ -6,7 +6,8 @@ from rest_framework import serializers
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
-from .models import Order, OrderItem, Product
+from foodcartapp.models import Order, OrderItem, Product
+from geolocation.models import Location
 
 
 def banners_list_api(request):
@@ -92,6 +93,9 @@ def register_order(request):
         phonenumber = serializer.validated_data['phonenumber'],
         address = serializer.validated_data['address']
     )
+    location, created = Location.objects.get_or_create(raw_address = serializer.validated_data['address'])
+    if created:
+        location.process_coordinates()
     products_fields = serializer.validated_data['products']
     order_items = [
         OrderItem(order=new_order, price=fields['product'].price, **fields) for fields in products_fields

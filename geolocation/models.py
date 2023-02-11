@@ -53,3 +53,6 @@ class Location(models.Model):
         self.processed = True
         self.updated_at = timezone.now()
         self.save()
+
+    def __str__(self):
+        return f"{self.raw_address} {self.latitude} {self.longitude} {self.updated_at}"

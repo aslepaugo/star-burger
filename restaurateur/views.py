@@ -2,13 +2,14 @@ from django import forms
 from django.contrib.auth import authenticate, login
 from django.contrib.auth import views as auth_views
 from django.contrib.auth.decorators import user_passes_test
+from django.db.models import Prefetch
 from django.shortcuts import redirect, render
 from django.urls import reverse_lazy
 from django.views import View
 from geopy import distance
-from geopy.exc import GeopyError
 
-from foodcartapp.models import Order, Product, Restaurant
+from foodcartapp.models import (Order, OrderItem, OrderStatus, Product,
+                                Restaurant, RestaurantMenuItem)
 from geolocation.models import Location
 
 
@@ -91,43 +92,106 @@ def view_restaurants(request):
     })
 
 
+
+
+
+
+
+
+
+def serialize_order(order, total, restaurants):
+    return {
+        'id': order.id,
+        'status': order.get_status_display(),
+        'payment_method': order.get_payment_method_display(),
+        'lastname': order.lastname,
+        'firstname': order.firstname,
+        'phonenumber': order.phonenumber,
+        'address': order.address,
+        'comment': order.comment,
+        'total': total,
+        'restaurant': order.cooking_restaurant.name if order.cooking_restaurant else '',
+        'restaurants': restaurants,
+    }
+
+
+def get_order_item_restaurants(restaurants_menu_items, order_item):
+    if order_item.order.cooking_restaurant:
+        return set()
+    
+    return  {
+        restaurants_menu_item.restaurant
+        for restaurants_menu_item in restaurants_menu_items
+        if restaurants_menu_item.product.id == order_item.product.id
+    }
+
+
+
+def get_order_restaurants(order_address, restaurants, locations):
+    order_coordinates = (locations.get(order_address)['latitude'], locations.get(order_address)['longitude'])
+    if not order_coordinates[0] or not order_coordinates[1]:
+        return []
+    restaurants_with_distance = []
+    for restaurnt in restaurants:
+        restaurant_coordinates = (locations.get(restaurnt.address)['latitude'], locations.get(restaurnt.address)['longitude'])
+        restaurants_with_distance.append(
+            (restaurnt.name,
+            (distance.distance(restaurant_coordinates, order_coordinates).km))
+        )
+    restaurants_with_distance.sort(key=lambda x: x[1])
+    return [
+        f'{restaurant_name} - {round(restaurant_distance, 2)} км'
+        for restaurant_name, restaurant_distance in restaurants_with_distance
+    ]
+
+
 @user_passes_test(is_manager, login_url='restaurateur:login')
 def view_orders(request):
-    orders = Order.objects.total_price().not_done().order_by('status', '-registered_at')
-    restaurants = []
-    for order in orders:
-        suitable_restaurants = Restaurant.objects.suitable_for_order(order)
-        distances = [-1] * len(suitable_restaurants)
+    
+    order_items = (
+        OrderItem.objects
+        .prefetch_related(Prefetch('order', queryset=Order.objects.total_price()), 'product', )
+        .exclude(order__status__in=[OrderStatus.DONE.value, OrderStatus.CANCELED.value])
+        .order_by('order__status', 'order__registered_at')
+    )
+    restaurant_menu_items = (
+        RestaurantMenuItem.objects
+        .filter(availability=True)
+        .prefetch_related('restaurant', 'product')
+    )
 
-        client_location, _ = Location.objects.get_or_create(raw_address=order.address)
-        try:
-            if not client_location.processed:
-                client_location.process_coordinates()
-        except (GeopyError, TypeError):
-            restaurants.append(list(zip(suitable_restaurants, distances)),)
-            continue
-        client_coordinates = (client_location.latitude, client_location.longitude)
+    restaurants_addresses = {restaurant_menu_item.restaurant.address for restaurant_menu_item in restaurant_menu_items}
+    orders_addresses = {order_item.order.address for order_item in order_items}
+    addresses = restaurants_addresses | orders_addresses
+    locations = Location.objects.filter(raw_address__in=addresses)
+    diff_addresses = addresses.difference({location.raw_address for location in locations})
+    for address in diff_addresses:
+        location = Location.objects.create(raw_address=address)
+        location.process_coordinates()  
+    if diff_addresses:
+        locations = Location.objects.filter(raw_address__in=addresses)
+    location_dict = {}
+    for location in locations:
+        location_dict[location.raw_address] = {
+            'latitude': location.latitude,
+            'longitude': location.longitude,
+        }
 
-        for index, restaurant in enumerate(suitable_restaurants):
-            restaurant_location, _ = Location.objects.get_or_create(raw_address=restaurant.address)
-            try:
-                if not restaurant_location.processed:
-                    restaurant_location.process_coordinates()
-            except (GeopyError, TypeError):
-                continue
+    orders = []
+    order = None
+    order_restaurants = None
+    for order_item in order_items:
+        if not order or order_item.order.id != order.id:
+            if order:
+                restaurants_definitions = get_order_restaurants(order.address, order_restaurants, location_dict)
+                orders.append(serialize_order(order, order_item.order.total, restaurants_definitions))
+            order = order_item.order
+            order_restaurants = get_order_item_restaurants(restaurant_menu_items, order_item)
+        else:
+            order_restaurants = order_restaurants & get_order_item_restaurants(restaurant_menu_items, order_item)
 
-            restaurant_coordinates = (restaurant_location.latitude, restaurant_location.longitude)
-            delivery_distance = distance.distance(client_coordinates, restaurant_coordinates).km
-            distances[index] = delivery_distance
-
-        restaurants.append(
-            sorted(
-                tuple(zip(suitable_restaurants, distances)),
-                key=lambda item: float(item[1])
-            )
-        )
-    orders_with_restaurants = list(zip(orders, restaurants))
-
-    return render(request, template_name='order_items.html', context={
-        'order_items': orders_with_restaurants,
-    })
+    if order:
+        restaurants_definitions = get_order_restaurants(order.address, order_restaurants, location_dict)
+        orders.append(serialize_order(order, order_item.order.total, restaurants_definitions))
+    
+    return render(request, template_name='order_items.html', context={'order_items': orders})

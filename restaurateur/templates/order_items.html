@@ -25,15 +25,15 @@
       <th>Ссылка на админку</th>
     </tr>
 
-    {% for item, restaurants in order_items %}
-      {% if restaurants|length == 0 and not item.restaurant %}
+    {% for item in order_items %}
+      {% if item.restaurants|length == 0 and not item.restaurant %}
       <tr style="color:red;background-color: rgb(218, 214, 214);">
       {% else %}
       <tr>
       {% endif %}        
         <td>{{ item.id }}</td>
-        <td>{{ item.get_status_display }}</td>
-        <td>{{ item.get_payment_method_display }}</td>
+        <td>{{ item.status }}</td>
+        <td>{{ item.payment_method }}</td>
         <td>{{ item.total|floatformat:2 }} ₽</td>
         <td>{{ item.firstname }} {{ item.lastname }}</td>
         <td>{{ item.phonenumber }}</td>
@@ -42,17 +42,13 @@
         <td>
           {% if item.restaurant %}
             Готовит <b>{{ item.restaurant }}</b>
-          {% elif restaurants|length > 0 %}
+          {% elif item.restaurants|length > 0 %}
             Может быть приготовлен ресторанами
             <details>
               <summary style="cursor: pointer;">▶</summary>
               <ul>
-                {% for restaurant, distance in restaurants %}
-                  {% if distance < 0  %}
-                    <li><i><b>{{ restaurant }} расстояние не определено</b></i></li>
-                  {% else %}
-                    <li><i><b>{{ restaurant }} {{ distance|floatformat:2 }} км.</b></i></li>
-                  {% endif %}
+                {% for restaurant in item.restaurants %}
+                    <li><i><b>{{ restaurant }}</b></i></li>
                 {% endfor %}
               </ul>
             </details>
