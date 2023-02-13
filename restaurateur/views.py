@@ -120,9 +120,10 @@ def get_order_item_restaurants(restaurants_menu_items, order_item):
 
 
 def get_order_restaurants(order_address, restaurants, locations):
-    order_coordinates = (locations.get(order_address)['latitude'], locations.get(order_address)['longitude'])
-    if not order_coordinates[0] or not order_coordinates[1]:
+    order_location = locations.get(order_address)
+    if not order_location:
         return []
+    order_coordinates = (order_location['latitude'], order_location['longitude'])
     restaurants_with_distance = []
     for restaurnt in restaurants:
         restaurant_coordinates = (locations.get(restaurnt.address)['latitude'],
@@ -141,7 +142,9 @@ def get_order_restaurants(order_address, restaurants, locations):
 def view_orders(request):
     order_items = (
         OrderItem.objects
-        .prefetch_related(Prefetch('order', queryset=Order.objects.total_price()), 'product', )
+        .prefetch_related(Prefetch('order', queryset=Order.objects.total_price()),
+                          'product',
+                          'order__cooking_restaurant')
         .exclude(order__status__in=[OrderStatus.DONE.value, OrderStatus.CANCELED.value])
         .order_by('order__status', 'order__registered_at')
     )
@@ -156,10 +159,13 @@ def view_orders(request):
     addresses = restaurants_addresses | orders_addresses
     locations = Location.objects.filter(raw_address__in=addresses)
     diff_addresses = addresses.difference({location.raw_address for location in locations})
+    locations = []
     for address in diff_addresses:
-        location = Location.objects.create(raw_address=address)
+        location = Location(raw_address=address)
         location.process_coordinates()
+        locations.append(location)
     if diff_addresses:
+        Location.objects.bulk_create(locations)
         locations = Location.objects.filter(raw_address__in=addresses)
     location_dict = {}
     for location in locations:
