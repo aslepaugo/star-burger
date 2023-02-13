@@ -1,7 +1,6 @@
 from django.db import transaction
 from django.http import JsonResponse
 from django.templatetags.static import static
-from phonenumbers import is_valid_number, parse
 from rest_framework import serializers
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
@@ -88,12 +87,12 @@ def register_order(request):
     serializer = OrderSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
     new_order = Order.objects.create(
-        firstname = serializer.validated_data['firstname'],
-        lastname = serializer.validated_data['lastname'],
-        phonenumber = serializer.validated_data['phonenumber'],
-        address = serializer.validated_data['address']
+        firstname=serializer.validated_data['firstname'],
+        lastname=serializer.validated_data['lastname'],
+        phonenumber=serializer.validated_data['phonenumber'],
+        address=serializer.validated_data['address']
     )
-    location, created = Location.objects.get_or_create(raw_address = serializer.validated_data['address'])
+    location, created = Location.objects.get_or_create(raw_address=serializer.validated_data['address'])
     if created:
         location.process_coordinates()
     products_fields = serializer.validated_data['products']

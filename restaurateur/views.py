@@ -92,13 +92,6 @@ def view_restaurants(request):
     })
 
 
-
-
-
-
-
-
-
 def serialize_order(order, total, restaurants):
     return {
         'id': order.id,
@@ -118,13 +111,12 @@ def serialize_order(order, total, restaurants):
 def get_order_item_restaurants(restaurants_menu_items, order_item):
     if order_item.order.cooking_restaurant:
         return set()
-    
-    return  {
+
+    return {
         restaurants_menu_item.restaurant
         for restaurants_menu_item in restaurants_menu_items
         if restaurants_menu_item.product.id == order_item.product.id
     }
-
 
 
 def get_order_restaurants(order_address, restaurants, locations):
@@ -133,10 +125,10 @@ def get_order_restaurants(order_address, restaurants, locations):
         return []
     restaurants_with_distance = []
     for restaurnt in restaurants:
-        restaurant_coordinates = (locations.get(restaurnt.address)['latitude'], locations.get(restaurnt.address)['longitude'])
+        restaurant_coordinates = (locations.get(restaurnt.address)['latitude'],
+                                  locations.get(restaurnt.address)['longitude'])
         restaurants_with_distance.append(
-            (restaurnt.name,
-            (distance.distance(restaurant_coordinates, order_coordinates).km))
+            (restaurnt.name, (distance.distance(restaurant_coordinates, order_coordinates).km))
         )
     restaurants_with_distance.sort(key=lambda x: x[1])
     return [
@@ -147,7 +139,6 @@ def get_order_restaurants(order_address, restaurants, locations):
 
 @user_passes_test(is_manager, login_url='restaurateur:login')
 def view_orders(request):
-    
     order_items = (
         OrderItem.objects
         .prefetch_related(Prefetch('order', queryset=Order.objects.total_price()), 'product', )
@@ -167,7 +158,7 @@ def view_orders(request):
     diff_addresses = addresses.difference({location.raw_address for location in locations})
     for address in diff_addresses:
         location = Location.objects.create(raw_address=address)
-        location.process_coordinates()  
+        location.process_coordinates()
     if diff_addresses:
         locations = Location.objects.filter(raw_address__in=addresses)
     location_dict = {}
@@ -193,5 +184,4 @@ def view_orders(request):
     if order:
         restaurants_definitions = get_order_restaurants(order.address, order_restaurants, location_dict)
         orders.append(serialize_order(order, order_item.order.total, restaurants_definitions))
-    
     return render(request, template_name='order_items.html', context={'order_items': orders})

@@ -6,7 +6,6 @@ from django.utils.html import format_html
 from django.utils.http import url_has_allowed_host_and_scheme
 
 from .models import Order, OrderItem, Product
-from .models import ProductCategory
 from .models import Restaurant
 from .models import RestaurantMenuItem
 
@@ -99,18 +98,18 @@ class ProductAdmin(admin.ModelAdmin):
         if not obj.image or not obj.id:
             return 'нет картинки'
         edit_url = reverse('admin:foodcartapp_product_change', args=(obj.id,))
-        return format_html('<a href="{edit_url}"><img src="{src}" style="max-height: 50px;"/></a>', edit_url=edit_url, src=obj.image.url)
+        return format_html(
+            '<a href="{edit_url}"><img src="{src}" style="max-height: 50px;"/></a>',
+            edit_url=edit_url,
+            src=obj.image.url
+        )
     get_image_list_preview.short_description = 'превью'
-
-
-@admin.register(ProductCategory)
-class ProductAdmin(admin.ModelAdmin):
-    pass
 
 
 class OrderItemInline(admin.TabularInline):
     model = OrderItem
     extra = 0
+
 
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
@@ -118,7 +117,7 @@ class OrderAdmin(admin.ModelAdmin):
         OrderItemInline,
     ]
 
-    readonly_fields = ['registered_at',]
+    readonly_fields = ['registered_at', ]
 
     def response_change(self, request, obj):
         response = super().response_post_save_change(request, obj)
@@ -134,5 +133,7 @@ class OrderAdmin(admin.ModelAdmin):
         return response
 
     def render_change_form(self, request, context, *args, **kwargs):
-        context['adminform'].form.fields['cooking_restaurant'].queryset = Restaurant.objects.suitable_for_order(kwargs['obj'])
+        context['adminform'].form.fields['cooking_restaurant'].queryset = (
+            Restaurant.objects.suitable_for_order(kwargs['obj'])
+        )
         return super().render_change_form(request, context, *args, **kwargs)
