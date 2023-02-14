@@ -153,20 +153,18 @@ def view_orders(request):
         .filter(availability=True)
         .prefetch_related('restaurant', 'product')
     )
-
     restaurants_addresses = {restaurant_menu_item.restaurant.address for restaurant_menu_item in restaurant_menu_items}
     orders_addresses = {order_item.order.address for order_item in order_items}
     addresses = restaurants_addresses | orders_addresses
-    locations = Location.objects.filter(raw_address__in=addresses)
+    locations = [location for location in Location.objects.filter(raw_address__in=addresses)]
     diff_addresses = addresses.difference({location.raw_address for location in locations})
-    locations = []
+    new_locations = []
     for address in diff_addresses:
         location = Location(raw_address=address)
         location.process_coordinates()
-        locations.append(location)
+        new_locations.append(location)
     if diff_addresses:
-        Location.objects.bulk_create(locations)
-        locations = Location.objects.filter(raw_address__in=addresses)
+        locations += Location.objects.bulk_create(new_locations)
     location_dict = {}
     for location in locations:
         location_dict[location.raw_address] = {
