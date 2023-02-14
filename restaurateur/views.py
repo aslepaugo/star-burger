@@ -119,15 +119,15 @@ def get_order_item_restaurants(restaurants_menu_items, order_item):
     }
 
 
-def get_order_restaurants(order_address, restaurants, locations):
-    order_location = locations.get(order_address)
+def get_order_restaurants(order_address, restaurants, location_map):
+    order_location = location_map.get(order_address)
     if not order_location:
         return []
     order_coordinates = (order_location['latitude'], order_location['longitude'])
     restaurants_with_distance = []
     for restaurnt in restaurants:
-        restaurant_coordinates = (locations.get(restaurnt.address)['latitude'],
-                                  locations.get(restaurnt.address)['longitude'])
+        restaurant_coordinates = (location_map.get(restaurnt.address)['latitude'],
+                                  location_map.get(restaurnt.address)['longitude'])
         restaurants_with_distance.append(
             (restaurnt.name, (distance.distance(restaurant_coordinates, order_coordinates).km))
         )
