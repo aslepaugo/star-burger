@@ -165,9 +165,9 @@ def view_orders(request):
         new_locations.append(location)
     if diff_addresses:
         locations += Location.objects.bulk_create(new_locations)
-    location_dict = {}
+    location_map = {}
     for location in locations:
-        location_dict[location.raw_address] = {
+        location_map[location.raw_address] = {
             'latitude': location.latitude,
             'longitude': location.longitude,
         }
@@ -178,7 +178,7 @@ def view_orders(request):
     for order_item in order_items:
         if not order or order_item.order.id != order.id:
             if order:
-                restaurants_definitions = get_order_restaurants(order.address, order_restaurants, location_dict)
+                restaurants_definitions = get_order_restaurants(order.address, order_restaurants, location_map)
                 orders.append(serialize_order(order, order_item.order.total, restaurants_definitions))
             order = order_item.order
             order_restaurants = get_order_item_restaurants(restaurant_menu_items, order_item)
@@ -186,6 +186,6 @@ def view_orders(request):
             order_restaurants = order_restaurants & get_order_item_restaurants(restaurant_menu_items, order_item)
 
     if order:
-        restaurants_definitions = get_order_restaurants(order.address, order_restaurants, location_dict)
+        restaurants_definitions = get_order_restaurants(order.address, order_restaurants, location_map)
         orders.append(serialize_order(order, order_item.order.total, restaurants_definitions))
     return render(request, template_name='order_items.html', context={'order_items': orders})
