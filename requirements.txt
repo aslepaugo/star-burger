@@ -5,3 +5,4 @@ environs[django]==9.3.*
 django-phonenumber-field[phonenumberslite]==7.*
 djangorestframework==3.*
 geopy==2.*
+gunicorn==20.*
